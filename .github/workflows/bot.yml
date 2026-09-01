@@ -1,0 +1,26 @@
+name: TikTok Sandik Botu
+
+on:
+  schedule:
+    # Her 5 dakikada bir otomatik çalışır
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kodları Çek
+        uses: actions/checkout@v3
+
+      - name: Node.js Kur
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Kütüphaneleri Yükle
+        run: npm install
+
+      - name: Botu Çalıştır
+        run: node index.js
+        
