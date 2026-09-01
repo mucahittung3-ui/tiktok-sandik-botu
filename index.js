@@ -1,13 +1,11 @@
 const { WebcastPushConnection } = require('tiktok-live-connector');
 const TelegramBot = require('node-telegram-bot-api');
 
-// Telegram Bot Bilgilerin
 const TELEGRAM_TOKEN = '8775027588:AAGxK-SFS4GCj1mWWE3pvAZpcA9vulfsL6E';
 const CHAT_ID = '-1004472646194';
 
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: false });
 
-// Botun otomatik arama yapacağı kelimeler
 const searchKeywords = ['canlı', 'hediye', 'sandık', 'game', 'gt', 'pk'];
 const activeConnections = new Set();
 
@@ -32,6 +30,12 @@ async function autoScan() {
             console.log(`Arama hatası (${keyword}):`, err.message);
         }
     }
+
+    // 30 saniye dinleyip işlemi başarıyla (exit code 0) sonlandırır
+    setTimeout(() => {
+        console.log("Tarama tamamlandı.");
+        process.exit(0);
+    }, 30000);
 }
 
 function listenStream(username) {
@@ -43,7 +47,6 @@ function listenStream(username) {
         activeConnections.delete(username);
     });
 
-    // Sandık (Treasure Box / Envelope) Bulunduğunda
     tiktokLive.on('envelope', data => {
         const message = `🎁 **YENİ SANDIK BULUNDU!**\n\n` +
                         `👤 **Yayıncı:** ${username}\n` +
@@ -59,7 +62,4 @@ function listenStream(username) {
     });
 }
 
-// Taramayı başlat ve her 5 dakikada bir tekrarla
 autoScan();
-setInterval(autoScan, 5 * 60 * 1000);
-                              
