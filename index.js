@@ -6,58 +6,55 @@ const CHAT_ID = '-1004472646194';
 
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: false });
 const searchKeywords = ['canlı', 'hediye', 'sandık', 'game', 'gt', 'pk'];
+const activeConnections = new Set();
 
-async function run() {
-    console.log("Tarama başlatıldı...");
+async function autoScan() {
+    console.log("TikTok yayınları taranıyor...");
 
     for (const keyword of searchKeywords) {
         try {
-            const res = await fetch(`https://www.tiktok.com/api/search/live/full/?keyword=${encodeURIComponent(keyword)}`);
-            const data = await res.json();
+            const response = await fetch(`https://www.tiktok.com/api/search/live/full/?keyword=${encodeURIComponent(keyword)}`);
+            const data = await response.json();
 
             if (data && data.item_list) {
-                for (const item of data.item_list.slice(0, 3)) { // Her kelimeden ilk 3 yayına bak
+                data.item_list.forEach(item => {
                     const username = item.author?.unique_id;
-                    if (username) {
-                        await checkStream(username);
+                    if (username && !activeConnections.has(username)) {
+                        activeConnections.add(username);
+                        listenStream(username);
                     }
-                }
+                });
             }
-        } catch (e) {
-            console.log(`Hata (${keyword}):`, e.message);
+        } catch (err) {
+            console.log(`Arama hatası (${keyword}):`, err.message);
         }
     }
-
-    console.log("Tarama tamamlandı, sorunsuz çıkılıyor.");
-    process.exit(0);
 }
 
-function checkStream(username) {
-    return new Promise((resolve) => {
-        let tiktokLive = new WebcastPushConnection(username);
-        
-        let timer = setTimeout(() => {
-            try { tiktokLive.disconnect(); } catch(e){}
-            resolve();
-        }, 3000); // Her yayın için maks 3 saniye bekle
+function listenStream(username) {
+    let tiktokLive = new WebcastPushConnection(username);
 
-        tiktokLive.connect().then(() => {
-            console.log(`[Kontrol Ediliyor] ${username}`);
-        }).catch(() => {
-            clearTimeout(timer);
-            resolve();
-        });
+    tiktokLive.connect().then(() => {
+        console.log(`[7/24 Aktif] ${username} yayını dinleniyor...`);
+    }).catch(() => {
+        activeConnections.delete(username);
+    });
 
-        tiktokLive.on('envelope', data => {
-            const message = `🎁 **YENİ SANDIK BULUNDU!**\n\n` +
-                            `👤 **Yayıncı:** ${username}\n` +
-                            `💎 **Coin/Hediye:** ${data.coins || 'Bilinmiyor'}\n` +
-                            `⏰ **Süre:** ${data.unpackDelay} saniye\n` +
-                            `🔗 **Yayın Linki:** https://www.tiktok.com/@${username}/live`;
+    tiktokLive.on('envelope', data => {
+        const message = `🎁 **YENİ SANDIK BULUNDU!**\n\n` +
+                        `👤 **Yayıncı:** ${username}\n` +
+                        `💎 **Coin/Hediye:** ${data.coins || 'Bilinmiyor'}\n` +
+                        `⏰ **Süre:** ${data.unpackDelay} saniye\n` +
+                        `🔗 **Yayın Linki:** https://www.tiktok.com/@${username}/live`;
 
-            bot.sendMessage(CHAT_ID, message, { parse_mode: 'Markdown' }).catch(() => {});
-        });
+        bot.sendMessage(CHAT_ID, message, { parse_mode: 'Markdown' });
+    });
+
+    tiktokLive.on('streamEnd', () => {
+        activeConnections.delete(username);
     });
 }
 
-run();
+// Taramayı başlat ve her 3 dakikada bir yeni yayınları kontrol et
+autoScan();
+setInterval(autoScan, 3 * 60 * 1000);
