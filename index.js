@@ -7,7 +7,7 @@ const CHAT_ID = '-1004472646194';
 const bot = new TelegramBot(TELEGRAM_TOKEN, { polling: false });
 
 const searchKeywords = ['canlı', 'hediye', 'sandık', 'game', 'gt', 'pk'];
-const activeConnections = new Set();
+const activeConnections = new Map();
 
 async function autoScan() {
     console.log("TikTok yayınları taranıyor...");
@@ -21,7 +21,6 @@ async function autoScan() {
                 data.item_list.forEach(item => {
                     const username = item.author.unique_id;
                     if (!activeConnections.has(username)) {
-                        activeConnections.add(username);
                         listenStream(username);
                     }
                 });
@@ -31,15 +30,24 @@ async function autoScan() {
         }
     }
 
-    // 30 saniye dinleyip işlemi başarıyla (exit code 0) sonlandırır
+    // 35 saniye sonra tüm canlı yayın bağlantılarını kapat ve çıkış yap
     setTimeout(() => {
-        console.log("Tarama tamamlandı.");
+        console.log("Tarama süresi doldu. Bağlantılar kapatılıyor...");
+        
+        for (const [username, connection] of activeConnections.entries()) {
+            try {
+                connection.disconnect();
+            } catch (e) {}
+        }
+        
+        console.log("İşlem başarıyla tamamlandı.");
         process.exit(0);
-    }, 30000);
+    }, 35000);
 }
 
 function listenStream(username) {
     let tiktokLive = new WebcastPushConnection(username);
+    activeConnections.set(username, tiktokLive);
 
     tiktokLive.connect().then(() => {
         console.log(`[Aktif] ${username} yayını dinleniyor...`);
