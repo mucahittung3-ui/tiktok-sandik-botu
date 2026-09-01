@@ -2,13 +2,13 @@ name: TikTok Sandik Botu
 
 on:
   schedule:
-    # Her 5 dakikada bir otomatik çalışır
     - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    timeout-minutes: 2
     steps:
       - name: Kodları Çek
         uses: actions/checkout@v4
@@ -16,7 +16,7 @@ jobs:
       - name: Node.js Kur
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Kütüphaneleri Yükle
         run: npm install
